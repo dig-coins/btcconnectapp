@@ -7,11 +7,14 @@ environment:
   sdk: '>=3.1.2 <4.0.0'
 
 dependencies:
+  animated_tree_view: ^2.2.0
+  crypto: ^3.0.3
   flutter:
     sdk: flutter
   flutter_dotenv: ^5.1.0
   flutter_easyloading: ^3.0.5
   http: ^1.1.0
+  simple_tags: ^0.0.6
 
 dev_dependencies:
   flutter_test:
