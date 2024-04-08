@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:animated_tree_view/animated_tree_view.dart';
 import 'package:btcconnectapp/helper/alert.dart';
 import 'package:btcconnectapp/helper/netutils.dart';
 import 'package:btcconnectapp/pages/model.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:simple_tags/simple_tags.dart';
 
@@ -29,6 +32,7 @@ class __PayPageState extends State<PayPage> {
   TextEditingController changeAddressController = TextEditingController();
   double confirmationTarget = 2;
   TextEditingController feeBtcPerKBController = TextEditingController();
+  TextEditingController totalFeeBtcController = TextEditingController();
   String bestBTCPerKB = '';
   bool minTransFlag = false;
   UnsignedTxResponse unsignedTx = UnsignedTxResponse.empty();
@@ -138,10 +142,41 @@ class __PayPageState extends State<PayPage> {
     }
 
     setState(() {
-      bestBTCPerKB = "${mBTC2BTC(mustFee)} BTC";
+      bestBTCPerKB = "${mBTC2BTC(mustFee)} BTC/kB";
     });
 
     flushUnspent();
+  }
+
+  Future<void> loadUnsignedTx() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+    if (result == null) {
+      return;
+    }
+
+    PlatformFile file = result.files.first;
+    file.xFile.readAsString().then((value) => {unsignedTxLoad(value)});
+  }
+
+  void resetAll() {
+    inputAddresses = [];
+    inputUnspents = [];
+    inputUnspentTags = [];
+    outputs = [];
+    inputAddressController.text = '';
+    outputAddressController.text = '';
+    outputAmountController.text = '';
+    changeAddressController.text = '';
+    confirmationTarget = 2;
+    feeBtcPerKBController.text = '';
+    bestBTCPerKB = '';
+    minTransFlag = false;
+    unsignedTx = UnsignedTxResponse.empty();
+    inputCustomFlag = false;
+    unspent = TreeNode<dynamic>.root();
+    setState(() {});
+    flushWallets();
   }
 
   void flushUnsignedTx() {
@@ -172,10 +207,14 @@ class __PayPageState extends State<PayPage> {
       'change_address': changeAddress,
     };
 
-    if (feeBtcPerKBController.text != '') {
-      data['fee_satoshi_per_kb'] = sBTC2mBTC(feeBtcPerKBController.text);
+    if (totalFeeBtcController.text != '') {
+      data['total_fee'] = sBTC2mBTC(totalFeeBtcController.text);
     } else {
-      data['confirmation_target'] = confirmationTarget.round();
+      if (feeBtcPerKBController.text != '') {
+        data['fee_satoshi_per_kb'] = sBTC2mBTC(feeBtcPerKBController.text);
+      } else {
+        data['confirmation_target'] = confirmationTarget.round();
+      }
     }
 
     data['min_trans_flag'] = minTransFlag;
@@ -274,6 +313,48 @@ class __PayPageState extends State<PayPage> {
     });
   }
 
+  void unsignedTxLoad(String unsignedTxHex) {
+    var data = {};
+    data['unsigned_tx'] = unsignedTxHex;
+
+    NetUtils.requestHttp('/unsigned-tx/load',
+        method: NetUtils.postMethod,
+        data: data,
+        onSuccess: (data) => {
+              setState(() {
+                unsignedTx = UnsignedTxResponse.fromJson(data);
+              })
+            },
+        onError: (error) =>
+            {AlertUtils.alertDialog(context: context, content: error)});
+  }
+
+  void reUnsignTx(String unsignedTxHex) {
+    var data = {};
+    data['unsigned_tx'] = unsignedTxHex;
+
+    if (totalFeeBtcController.text != '') {
+      data['total_fee'] = sBTC2mBTC(totalFeeBtcController.text);
+    } else {
+      if (feeBtcPerKBController.text != '') {
+        data['fee_satoshi_per_kb'] = sBTC2mBTC(feeBtcPerKBController.text);
+      } else {
+        data['confirmation_target'] = confirmationTarget.round();
+      }
+    }
+
+    NetUtils.requestHttp('/re-unsigned-tx',
+        method: NetUtils.postMethod,
+        data: data,
+        onSuccess: (data) => {
+              setState(() {
+                unsignedTx = UnsignedTxResponse.fromJson(data);
+              })
+            },
+        onError: (error) =>
+            {AlertUtils.alertDialog(context: context, content: error)});
+  }
+
   Widget unsignedTxUI() {
     if (unsignedTx.unsignedTxHex == '') {
       return Container();
@@ -283,7 +364,7 @@ class __PayPageState extends State<PayPage> {
     for (int i = 0; i < unsignedTx.unsignedTx.inputs.length; i++) {
       var input = unsignedTx.unsignedTx.inputs[i];
       inputs.add(
-          '${mBTC2BTC(input.amount)} BTC from\n${input.address}\n${input.txID}:${input.vOut}');
+          '${mBTC2BTC(input.amount)} BTC 来自\n${input.address}\n${input.txID}:${input.vOut}');
     }
 
     List<String> outputs = <String>[];
@@ -291,10 +372,10 @@ class __PayPageState extends State<PayPage> {
       var output = unsignedTx.unsignedTx.outputs[i];
       String changeInfo = '';
       if (output.changeFlag) {
-        changeInfo = 'change address';
+        changeInfo = '  - 找零地址';
       }
       outputs.add(
-          '${mBTC2BTC(output.amount)} BTC to\n${output.address}\n$changeInfo');
+          '${mBTC2BTC(output.amount)} BTC 到\n${output.address}\n$changeInfo');
     }
 
     return SizedBox(
@@ -459,6 +540,20 @@ class __PayPageState extends State<PayPage> {
     return '';
   }
 
+  Future<void> saveUnsigndTx(String content) async {
+    String? outputFile = await FilePicker.platform.saveFile(
+      dialogTitle: '请选择未签名交易保存文件',
+      fileName: 'unsigned-tx.txt',
+    );
+
+    if (outputFile == null) {
+      return;
+    }
+
+    File file = File(outputFile);
+    file.writeAsString(content);
+  }
+
   Widget? mainWidgets() {
     return Padding(
       padding: const EdgeInsets.all(8.0),
@@ -509,6 +604,7 @@ class __PayPageState extends State<PayPage> {
                   onChanged: (SingingCharacter? value) {
                     setState(() {
                       payType = value;
+                      inputCustomFlag = true;
                     });
                   },
                 ),
@@ -520,7 +616,7 @@ class __PayPageState extends State<PayPage> {
               value: inputCustomFlag,
               onChanged: (value) => {
                     setState(() {
-                      if (value != null) {
+                      if (value != null && payType == SingingCharacter.pay) {
                         inputCustomFlag = value;
                       }
                     })
@@ -730,8 +826,7 @@ class __PayPageState extends State<PayPage> {
             ],
           ),
           dividerUI(),
-          const SizedBox(height: 10),
-          const ListTile(title: Text('其他')),
+          ListTile(title: const Text('其他'), onTap: () => {}),
           Row(
             children: [
               Flexible(
@@ -759,18 +854,32 @@ class __PayPageState extends State<PayPage> {
               )
             ],
           ),
+          dividerUI(),
+          ListTile(title: const Text('未签名'), onTap: () => {}),
           const SizedBox(height: 10),
-          Row(children: [
-            const Text('费用相关'),
-            const SizedBox(width: 20),
+          Wrap(spacing: 10, runSpacing: 4, children: [
             SizedBox(
-              width: 140,
+              width: 150,
               child: TextField(
                 onChanged: (value) => {setState(() {})},
-                controller: feeBtcPerKBController,
+                controller: totalFeeBtcController,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  labelText: 'BTC/kB',
+                  labelText: '固定总费用(BTC)',
+                ),
+              ),
+            ),
+            Visibility(
+              visible: totalFeeBtcController.text == '',
+              child: SizedBox(
+                width: 120,
+                child: TextField(
+                  onChanged: (value) => {setState(() {})},
+                  controller: feeBtcPerKBController,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: '费率:BTC/kB',
+                  ),
                 ),
               ),
             ),
@@ -782,7 +891,8 @@ class __PayPageState extends State<PayPage> {
                 },
                 icon: const Icon(Icons.refresh)),
             Visibility(
-              visible: feeBtcPerKBController.text == '',
+              visible: feeBtcPerKBController.text == '' &&
+                  totalFeeBtcController.text == '',
               child: Row(
                 children: [
                   Slider(
@@ -810,13 +920,34 @@ class __PayPageState extends State<PayPage> {
                 },
                 child: const Text('生成')),
             const SizedBox(width: 10),
+            ElevatedButton(
+                onPressed: () {
+                  resetAll();
+                },
+                child: const Text('重置')),
+            const SizedBox(width: 10),
+            ElevatedButton(
+                onPressed: () {
+                  loadUnsignedTx();
+                },
+                child: const Text('加载未签名交易')),
+            const SizedBox(width: 10),
             Visibility(
               visible: unsignedTx.unsignedTxHex != '',
               child: ElevatedButton(
                   onPressed: () {
-                    flushUnsignedTx();
+                    saveUnsigndTx(unsignedTx.unsignedTxHex);
                   },
                   child: const Text('保存未签名交易')),
+            ),
+            const SizedBox(width: 10),
+            Visibility(
+              visible: unsignedTx.unsignedTxHex != '',
+              child: ElevatedButton(
+                  onPressed: () {
+                    reUnsignTx(unsignedTx.unsignedTxHex);
+                  },
+                  child: const Text('根据费用设置重新生成')),
             )
           ]),
           dividerUI(),
