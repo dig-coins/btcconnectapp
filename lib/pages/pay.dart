@@ -540,18 +540,26 @@ class __PayPageState extends State<PayPage> {
     return '';
   }
 
-  Future<void> saveUnsigndTx(String content) async {
+  Future<void> saveUnsigndTx(String content, commandJSON) async {
     String? outputFile = await FilePicker.platform.saveFile(
       dialogTitle: '请选择未签名交易保存文件',
       fileName: 'unsigned-tx.txt',
     );
 
-    if (outputFile == null) {
-      return;
+    if (outputFile != null) {
+      File file = File(outputFile);
+      file.writeAsString(content);
     }
 
-    File file = File(outputFile);
-    file.writeAsString(content);
+    outputFile = await FilePicker.platform.saveFile(
+      dialogTitle: '请选择未签名交易命令JSON版本保存文件',
+      fileName: 'unsigned-tx.json',
+    );
+
+    if (outputFile != null) {
+      File file = File(outputFile);
+      file.writeAsString(commandJSON);
+    }
   }
 
   Widget? mainWidgets() {
@@ -936,7 +944,8 @@ class __PayPageState extends State<PayPage> {
               visible: unsignedTx.unsignedTxHex != '',
               child: ElevatedButton(
                   onPressed: () {
-                    saveUnsigndTx(unsignedTx.unsignedTxHex);
+                    saveUnsigndTx(
+                        unsignedTx.unsignedTxHex, unsignedTx.commandJSON);
                   },
                   child: const Text('保存未签名交易')),
             ),
@@ -964,7 +973,7 @@ class __PayPageState extends State<PayPage> {
   Widget build(BuildContext context) {
     return MaterialApp(
         home: Scaffold(
-      appBar: AppBar(title: const Text('Pay')),
+      appBar: AppBar(title: const Text('付款')),
       body: SingleChildScrollView(child: mainWidgets()),
     ));
   }

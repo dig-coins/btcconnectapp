@@ -1,6 +1,4 @@
-import 'dart:convert';
 import 'package:btcconnectapp/pages/share.dart';
-import 'package:crypto/crypto.dart';
 
 class TxInput {
   final String txID;
@@ -84,12 +82,14 @@ class UnsignedTxResponse {
   final UnsignedTx unsignedTx;
   final int feeSatoshiPerKB;
   final int fee;
+  final String commandJSON;
 
   const UnsignedTxResponse({
     required this.unsignedTxHex,
     required this.unsignedTx,
     required this.feeSatoshiPerKB,
     required this.fee,
+    required this.commandJSON,
   });
 
   factory UnsignedTxResponse.fromJson(Map<String, dynamic> json) {
@@ -98,6 +98,7 @@ class UnsignedTxResponse {
       unsignedTx: UnsignedTx.fromJson(json['unsigned_tx']),
       feeSatoshiPerKB: json['fee_satoshi_per_kb'],
       fee: json['fee'],
+      commandJSON: json['command_json'],
     );
   }
 
@@ -106,7 +107,8 @@ class UnsignedTxResponse {
         unsignedTxHex: '',
         unsignedTx: UnsignedTx.empty(),
         feeSatoshiPerKB: 0,
-        fee: 0);
+        fee: 0,
+        commandJSON: '');
   }
 }
 
