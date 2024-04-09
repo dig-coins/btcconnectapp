@@ -450,7 +450,10 @@ class __PayPageState extends State<PayPage> {
   Widget dividerUI() {
     return const Padding(
       padding: EdgeInsets.all(8.0),
-      child: Divider(thickness: 20),
+      child: Divider(
+        thickness: 6,
+        color: Colors.blueAccent,
+      ),
     );
   }
 
@@ -570,7 +573,13 @@ class __PayPageState extends State<PayPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const Text(
+                '钱包',
+                style: TextStyle(fontSize: 20),
+              ),
+              const SizedBox(width: 10),
               DropdownMenu<String>(
                 initialSelection: selectWallet,
                 onSelected: (String? value) {
@@ -585,9 +594,13 @@ class __PayPageState extends State<PayPage> {
                 }).toList(),
               ),
               const SizedBox(width: 20),
-              Text(balance),
+              Text(
+                balance,
+                style: const TextStyle(color: Colors.grey),
+              ),
             ],
           ),
+          dividerUI(),
           Row(children: [
             Flexible(
               child: ListTile(
@@ -759,7 +772,7 @@ class __PayPageState extends State<PayPage> {
             ),
           ),
           dividerUI(),
-          const ListTile(title: Text('输出')),
+          ListTile(title: const Text('输出'), onTap: () => {}),
           Container(
             margin: const EdgeInsets.all(15.0),
             padding: const EdgeInsets.all(3.0),
