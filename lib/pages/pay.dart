@@ -220,18 +220,37 @@ class __PayPageState extends State<PayPage> {
     data['min_trans_flag'] = minTransFlag;
 
     if (payType == SingingCharacter.pay) {
-      data['wallets'] = wallets;
+      if (!inputCustomFlag || inputAddresses.isEmpty) {
+        data['wallets'] = wallets;
+        NetUtils.requestHttp('/pay/simple',
+            method: NetUtils.postMethod,
+            data: data,
+            onSuccess: (data) => {
+                  setState(() {
+                    unsignedTx = UnsignedTxResponse.fromJson(data);
+                  })
+                },
+            onError: (error) =>
+                {AlertUtils.alertDialog(context: context, content: error)});
+      } else {
+        var inputs = [];
+        inputs.add({
+          'addresses': inputAddresses,
+        });
 
-      NetUtils.requestHttp('/pay/simple',
-          method: NetUtils.postMethod,
-          data: data,
-          onSuccess: (data) => {
-                setState(() {
-                  unsignedTx = UnsignedTxResponse.fromJson(data);
-                })
-              },
-          onError: (error) =>
-              {AlertUtils.alertDialog(context: context, content: error)});
+        data['inputs'] = inputs;
+
+        NetUtils.requestHttp('/pay',
+            method: NetUtils.postMethod,
+            data: data,
+            onSuccess: (data) => {
+                  setState(() {
+                    unsignedTx = UnsignedTxResponse.fromJson(data);
+                  })
+                },
+            onError: (error) =>
+                {AlertUtils.alertDialog(context: context, content: error)});
+      }
     } else {
       if (inputUnspents.isEmpty) {
         AlertUtils.alertDialog(
