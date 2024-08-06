@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:animated_tree_view/animated_tree_view.dart';
@@ -6,6 +7,7 @@ import 'package:btcconnectapp/helper/netutils.dart';
 import 'package:btcconnectapp/pages/model.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:simple_tags/simple_tags.dart';
 
 class PayPage extends StatefulWidget {
@@ -157,6 +159,28 @@ class __PayPageState extends State<PayPage> {
 
     PlatformFile file = result.files.first;
     file.xFile.readAsString().then((value) => {unsignedTxLoad(value)});
+  }
+
+  Future<void> loadSignedTxAndBroadcast() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+    if (result == null) {
+      return;
+    }
+
+    PlatformFile file = result.files.first;
+    file.xFile.readAsString().then((value) => {signedTxBroadcast(value)});
+  }
+
+  void signedTxBroadcast(String unsignedTxHex) {
+    NetUtils.requestHttp('/tx/signed/broadcast',
+        method: NetUtils.postMethod,
+        data: jsonDecode(unsignedTxHex),
+        onSuccess: (data) => {
+              AlertUtils.alertDialog(context: context, content: data),
+            },
+        onError: (error) =>
+            {AlertUtils.alertDialog(context: context, content: error)});
   }
 
   void resetAll() {
@@ -512,6 +536,12 @@ class __PayPageState extends State<PayPage> {
                 },
                 child: Text(inputAddressText(v.address)),
               )),
+          IconButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: v.address));
+            },
+            icon: const Icon(Icons.copy),
+          ),
           const SizedBox(width: 20),
         ],
       );
@@ -996,6 +1026,17 @@ class __PayPageState extends State<PayPage> {
           Text(txFeeInfo()),
           const SizedBox(height: 10),
           unsignedTxUI(),
+          dividerUI(),
+          ListTile(title: const Text('广播交易'), onTap: () => {}),
+          const SizedBox(height: 10),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            ElevatedButton(
+                onPressed: () {
+                  loadSignedTxAndBroadcast();
+                },
+                child: const Text('加载签名交易并广播')),
+            const SizedBox(width: 10)
+          ]),
         ],
       ),
     );
