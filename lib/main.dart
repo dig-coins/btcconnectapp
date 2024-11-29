@@ -1,3 +1,4 @@
+import 'package:btcconnectapp/helper/commdata.dart';
 import 'package:btcconnectapp/pages/pay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
+  await CommData.init();
   runApp(const MainApp());
   configLoading();
 }

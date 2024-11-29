@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:animated_tree_view/animated_tree_view.dart';
 import 'package:btcconnectapp/helper/alert.dart';
+import 'package:btcconnectapp/helper/commdata.dart';
 import 'package:btcconnectapp/helper/netutils.dart';
 import 'package:btcconnectapp/pages/model.dart';
+import 'package:btcconnectapp/pages/serverconfigpage.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -48,12 +51,24 @@ class __PayPageState extends State<PayPage> {
     flushWallets();
   }
 
-  void flushWallets() {
+  Future<void> flushWallets() async {
+    var r = await NetUtils.requestHttp('/wallets', method: NetUtils.getMethod);
+    if (r.code != 0) {
+      if (mounted) {
+        AlertUtils.alertDialog(context: context, content: r.msg);
+      }
+
+      return;
+    }
+
+    processWalletsUpdate(List<String>.from(r.resp));
+/*
     NetUtils.requestHttp('/wallets',
         method: NetUtils.getMethod,
         onSuccess: (data) => {processWalletsUpdate(List<String>.from(data))},
         onError: (error) =>
             {AlertUtils.alertDialog(context: context, content: error)});
+            */
   }
 
   void processWalletsUpdate(List<String> newWallets) {
@@ -77,11 +92,27 @@ class __PayPageState extends State<PayPage> {
     flushBalance();
   }
 
-  void flushBalance() {
+  Future<void> flushBalance() async {
     List<String> wallets = <String>[];
     if (selectWallet != 'all') {
       wallets.add(selectWallet);
     }
+
+    var r = await NetUtils.requestHttp('/balance',
+        method: NetUtils.postMethod,
+        data: {
+          "wallets": wallets,
+        });
+    if (r.code != 0) {
+      if (mounted) {
+        AlertUtils.alertDialog(context: context, content: r.msg);
+      }
+
+      return;
+    }
+
+    processBalanceUpdate(r.resp);
+/*
     NetUtils.requestHttp('/balance',
         method: NetUtils.postMethod,
         data: {
@@ -90,6 +121,7 @@ class __PayPageState extends State<PayPage> {
         onSuccess: (data) => {processBalanceUpdate(int.parse(data.toString()))},
         onError: (error) =>
             {AlertUtils.alertDialog(context: context, content: error)});
+            */
   }
 
   String mBTC2BTC(int v) {
@@ -126,12 +158,24 @@ class __PayPageState extends State<PayPage> {
 
   void addressSelected(String address) {}
 
-  void flushFeeBTCPerKB() {
+  Future<void> flushFeeBTCPerKB() async {
+    var r = await NetUtils.requestHttp('/fee', method: NetUtils.getMethod);
+    if (r.code != 0) {
+      if (mounted) {
+        AlertUtils.alertDialog(context: context, content: r.msg);
+      }
+
+      return;
+    }
+
+    processFeeBTCPerKB(r.resp);
+/*
     NetUtils.requestHttp('/fee',
         method: NetUtils.getMethod,
         onSuccess: (data) => {processFeeBTCPerKB(data)},
         onError: (error) =>
             {AlertUtils.alertDialog(context: context, content: error)});
+            */
   }
 
   void processFeeBTCPerKB(Map<String, dynamic> fees) {
@@ -172,7 +216,22 @@ class __PayPageState extends State<PayPage> {
     file.xFile.readAsString().then((value) => {signedTxBroadcast(value)});
   }
 
-  void signedTxBroadcast(String unsignedTxHex) {
+  Future<void> signedTxBroadcast(String unsignedTxHex) async {
+    var r = await NetUtils.requestHttp('/tx/signed/broadcast',
+        method: NetUtils.postMethod, data: jsonDecode(unsignedTxHex));
+    if (r.code != 0) {
+      if (mounted) {
+        AlertUtils.alertDialog(context: context, content: r.msg);
+      }
+
+      return;
+    }
+
+    if (mounted) {
+      AlertUtils.alertDialog(context: context, content: r.resp);
+    }
+
+/*
     NetUtils.requestHttp('/tx/signed/broadcast',
         method: NetUtils.postMethod,
         data: jsonDecode(unsignedTxHex),
@@ -181,6 +240,7 @@ class __PayPageState extends State<PayPage> {
             },
         onError: (error) =>
             {AlertUtils.alertDialog(context: context, content: error)});
+            */
   }
 
   void resetAll() {
@@ -203,7 +263,7 @@ class __PayPageState extends State<PayPage> {
     flushWallets();
   }
 
-  void flushUnsignedTx() {
+  Future<void> flushUnsignedTx() async {
     var changeAddress = changeAddressController.text;
 
     if (outputs.isEmpty && changeAddress == '') {
@@ -246,6 +306,20 @@ class __PayPageState extends State<PayPage> {
     if (payType == SingingCharacter.pay) {
       if (!inputCustomFlag || inputAddresses.isEmpty) {
         data['wallets'] = wallets;
+        var r = await NetUtils.requestHttp('/pay/simple',
+            method: NetUtils.postMethod, data: data);
+        if (r.code != 0) {
+          if (mounted) {
+            AlertUtils.alertDialog(context: context, content: r.msg);
+          }
+
+          return;
+        }
+
+        setState(() {
+          unsignedTx = UnsignedTxResponse.fromJson(r.resp);
+        });
+/*
         NetUtils.requestHttp('/pay/simple',
             method: NetUtils.postMethod,
             data: data,
@@ -256,6 +330,7 @@ class __PayPageState extends State<PayPage> {
                 },
             onError: (error) =>
                 {AlertUtils.alertDialog(context: context, content: error)});
+                */
       } else {
         var inputs = [];
         inputs.add({
@@ -264,6 +339,20 @@ class __PayPageState extends State<PayPage> {
 
         data['inputs'] = inputs;
 
+        var r = await NetUtils.requestHttp('/pay',
+            method: NetUtils.postMethod, data: data);
+        if (r.code != 0) {
+          if (mounted) {
+            AlertUtils.alertDialog(context: context, content: r.msg);
+          }
+
+          return;
+        }
+
+        setState(() {
+          unsignedTx = UnsignedTxResponse.fromJson(r.resp);
+        });
+/*
         NetUtils.requestHttp('/pay',
             method: NetUtils.postMethod,
             data: data,
@@ -274,6 +363,7 @@ class __PayPageState extends State<PayPage> {
                 },
             onError: (error) =>
                 {AlertUtils.alertDialog(context: context, content: error)});
+                */
       }
     } else {
       if (inputUnspents.isEmpty) {
@@ -300,6 +390,19 @@ class __PayPageState extends State<PayPage> {
 
       data['inputs'] = inputs;
 
+      var r = await NetUtils.requestHttp('/pay',
+          method: NetUtils.postMethod, data: data);
+      if (r.code != 0) {
+        if (mounted) {
+          AlertUtils.alertDialog(context: context, content: r.msg);
+        }
+
+        return;
+      }
+      setState(() {
+        unsignedTx = UnsignedTxResponse.fromJson(r.resp);
+      });
+/*
       NetUtils.requestHttp('/pay',
           method: NetUtils.postMethod,
           data: data,
@@ -310,14 +413,31 @@ class __PayPageState extends State<PayPage> {
               },
           onError: (error) =>
               {AlertUtils.alertDialog(context: context, content: error)});
+              */
     }
   }
 
-  void flushUnspent() {
+  Future<void> flushUnspent() async {
     List<String> wallets = <String>[];
     if (selectWallet != 'all') {
       wallets.add(selectWallet);
     }
+
+    var r = await NetUtils.requestHttp('/unspent/group_wallet_address',
+        method: NetUtils.postMethod,
+        data: {
+          "wallets": wallets,
+        });
+    if (r.code != 0) {
+      if (mounted) {
+        AlertUtils.alertDialog(context: context, content: r.msg);
+      }
+
+      return;
+    }
+
+    processUnspent(r.resp);
+/*
     NetUtils.requestHttp('/unspent/group_wallet_address',
         method: NetUtils.postMethod,
         data: {
@@ -326,6 +446,7 @@ class __PayPageState extends State<PayPage> {
         onSuccess: (data) => {processUnspent(data)},
         onError: (error) =>
             {AlertUtils.alertDialog(context: context, content: error)});
+            */
   }
 
   void processUnspent(List<dynamic> data) {
@@ -356,10 +477,24 @@ class __PayPageState extends State<PayPage> {
     });
   }
 
-  void unsignedTxLoad(String unsignedTxHex) {
+  Future<void> unsignedTxLoad(String unsignedTxHex) async {
     var data = {};
     data['unsigned_tx'] = unsignedTxHex;
 
+    var r = await NetUtils.requestHttp('/unsigned-tx/load',
+        method: NetUtils.postMethod, data: data);
+    if (r.code != 0) {
+      if (mounted) {
+        AlertUtils.alertDialog(context: context, content: r.msg);
+      }
+
+      return;
+    }
+
+    setState(() {
+      unsignedTx = UnsignedTxResponse.fromJson(r.resp);
+    });
+/*
     NetUtils.requestHttp('/unsigned-tx/load',
         method: NetUtils.postMethod,
         data: data,
@@ -370,9 +505,10 @@ class __PayPageState extends State<PayPage> {
             },
         onError: (error) =>
             {AlertUtils.alertDialog(context: context, content: error)});
+            */
   }
 
-  void reUnsignTx(String unsignedTxHex) {
+  Future<void> reUnsignTx(String unsignedTxHex) async {
     var data = {};
     data['unsigned_tx'] = unsignedTxHex;
 
@@ -386,6 +522,20 @@ class __PayPageState extends State<PayPage> {
       }
     }
 
+    var r = await NetUtils.requestHttp('/re-unsigned-tx',
+        method: NetUtils.postMethod, data: data);
+    if (r.code != 0) {
+      if (mounted) {
+        AlertUtils.alertDialog(context: context, content: r.msg);
+      }
+
+      return;
+    }
+
+    setState(() {
+      unsignedTx = UnsignedTxResponse.fromJson(r.resp);
+    });
+/*
     NetUtils.requestHttp('/re-unsigned-tx',
         method: NetUtils.postMethod,
         data: data,
@@ -396,6 +546,7 @@ class __PayPageState extends State<PayPage> {
             },
         onError: (error) =>
             {AlertUtils.alertDialog(context: context, content: error)});
+            */
   }
 
   Widget unsignedTxUI() {
@@ -1047,6 +1198,30 @@ class __PayPageState extends State<PayPage> {
     return MaterialApp(
         home: Scaffold(
       appBar: AppBar(title: const Text('付款')),
+      drawer: Drawer(
+          child: SingleChildScrollView(
+              child: Column(
+        children: [
+          UserAccountsDrawerHeader(
+            accountName: const Text('btc connect'),
+            accountEmail: CommData.customServerURL != ''
+                ? const Text('')
+                : CommData.testnet
+                    ? const Text('测网')
+                    : const Text('主网'),
+          ),
+          ListTile(
+              title: const Text('服务器配置'),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const ServerConfigPage()),
+                );
+                flushWallets();
+              })
+        ],
+      ))),
       body: SingleChildScrollView(child: mainWidgets()),
     ));
   }
