@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:ffi';
 import 'dart:io';
 
 import 'package:animated_tree_view/animated_tree_view.dart';
@@ -33,6 +32,7 @@ class __PayPageState extends State<PayPage> {
   List<String> outputs = [];
   TextEditingController inputAddressController = TextEditingController();
   TextEditingController outputAddressController = TextEditingController();
+  TextEditingController outputCommentController = TextEditingController();
   TextEditingController outputAmountController = TextEditingController();
   TextEditingController changeAddressController = TextEditingController();
   double confirmationTarget = 2;
@@ -283,7 +283,11 @@ class __PayPageState extends State<PayPage> {
     var txOutputs = [];
     for (int i = 0; i < outputs.length; i++) {
       var ps = outputs[i].split(':');
-      txOutputs.add({'address': ps[0], 'amount': sBTC2mBTC(ps[1])});
+      if (ps[0] != '刻字') {
+        txOutputs.add({'address': ps[0], 'amount': sBTC2mBTC(ps[1])});
+      } else {
+        txOutputs.add({'comment': ps[1]});
+      }
     }
 
     var data = {
@@ -568,8 +572,13 @@ class __PayPageState extends State<PayPage> {
       if (output.changeFlag) {
         changeInfo = '  - 找零地址';
       }
-      outputs.add(
-          '${mBTC2BTC(output.amount)} BTC 到\n${output.address}\n$changeInfo');
+
+      if (output.comment != '') {
+        outputs.add('刻字: ${output.comment}');
+      } else {
+        outputs.add(
+            '${mBTC2BTC(output.amount)} BTC 到\n${output.address}\n$changeInfo');
+      }
     }
 
     return SizedBox(
@@ -1046,6 +1055,45 @@ class __PayPageState extends State<PayPage> {
               ),
             ],
           ),
+          const Padding(
+            padding: EdgeInsets.all(2.0),
+            child: Divider(
+              thickness: 2,
+              color: Colors.grey,
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Flexible(
+                child: TextField(
+                  controller: outputCommentController,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: '刻字内容',
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () {
+                  String comment = outputCommentController.text;
+                  if (comment == '') {
+                    AlertUtils.alertDialog(
+                        context: context, content: '请输入刻字内容');
+
+                    return;
+                  }
+
+                  outputs.add('刻字:$comment');
+
+                  setState(() {
+                    outputCommentController.text = '';
+                  });
+                },
+                icon: const Icon(Icons.comment),
+              ),
+            ],
+          ),
           dividerUI(),
           ListTile(title: const Text('其他'), onTap: () => {}),
           Row(
@@ -1206,9 +1254,11 @@ class __PayPageState extends State<PayPage> {
             accountName: const Text('btc connect'),
             accountEmail: CommData.customServerURL != ''
                 ? const Text('')
-                : CommData.testnet
+                : CommData.testnetFlag == 1
                     ? const Text('测网')
-                    : const Text('主网'),
+                    : CommData.testnetFlag == 2
+                        ? const Text("回归测网")
+                        : const Text('主网'),
           ),
           ListTile(
               title: const Text('服务器配置'),

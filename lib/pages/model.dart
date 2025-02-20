@@ -35,11 +35,13 @@ class TxOutput {
   final String address;
   final int amount;
   final bool changeFlag;
+  final String comment;
 
   const TxOutput({
     required this.address,
     required this.amount,
     required this.changeFlag,
+    required this.comment,
   });
 
   factory TxOutput.fromJson(Map<String, dynamic> json) {
@@ -47,11 +49,13 @@ class TxOutput {
       address: json['address'],
       amount: json['amount'],
       changeFlag: json['change_flag'],
+      comment: json.containsKey('comment') ? json['comment'] : '',
     );
   }
 
   factory TxOutput.empty() {
-    return const TxOutput(address: '', amount: 0, changeFlag: false);
+    return const TxOutput(
+        address: '', amount: 0, changeFlag: false, comment: '');
   }
 }
 

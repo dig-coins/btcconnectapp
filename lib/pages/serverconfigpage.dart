@@ -12,14 +12,14 @@ class __ServerConfigPageState extends State<ServerConfigPage> {
   final customServerURLController = TextEditingController();
   bool devMode = false;
   final proxyController = TextEditingController();
-  bool testnet = false;
+  int testnetFlag = 0;
 
   @override
   void initState() {
     super.initState();
 
     devMode = CommData.devMode;
-    testnet = CommData.testnet;
+    testnetFlag = CommData.testnetFlag;
     customServerURLController.text = CommData.customServerURL;
     proxyController.text = CommData.proxy;
   }
@@ -63,15 +63,33 @@ class __ServerConfigPageState extends State<ServerConfigPage> {
                   controller: proxyController,
                 ),
               ),
-              CheckboxListTile(
-                title: const Text('测网'),
-                onChanged: (bool? value) {
-                  setState(() {
-                    testnet = value!;
-                  });
-                },
-                value: testnet,
-              ),
+              RadioListTile(
+                  title: const Text('主网'),
+                  value: 0,
+                  groupValue: testnetFlag,
+                  onChanged: (int? value) {
+                    setState(() {
+                      testnetFlag = value!;
+                    });
+                  }),
+              RadioListTile(
+                  title: const Text('测网'),
+                  value: 1,
+                  groupValue: testnetFlag,
+                  onChanged: (int? value) {
+                    setState(() {
+                      testnetFlag = value!;
+                    });
+                  }),
+              RadioListTile(
+                  title: const Text('回归测网'),
+                  value: 2,
+                  groupValue: testnetFlag,
+                  onChanged: (int? value) {
+                    setState(() {
+                      testnetFlag = value!;
+                    });
+                  }),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -79,7 +97,7 @@ class __ServerConfigPageState extends State<ServerConfigPage> {
                   ElevatedButton(
                       onPressed: () {
                         CommData.devMode = devMode;
-                        CommData.testnet = testnet;
+                        CommData.testnetFlag = testnetFlag;
                         CommData.customServerURL =
                             customServerURLController.text;
                         CommData.proxy = proxyController.text;

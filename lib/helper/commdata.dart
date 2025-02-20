@@ -7,7 +7,7 @@ class CommData {
   static const String _spKeyCustomServerURL = 'custom_server_url';
   static const String _spKeyProxy = 'proxy';
   static const String _spKeyDevMode = 'dev_mode';
-  static const String _spKeyTestNet = 'test_net';
+  static const String _spKeyTestNet = 'test_net_flag';
 
   static bool useZProtocol = true;
   static bool useZJsonEncodeOnPostBody = true;
@@ -21,7 +21,7 @@ class CommData {
   static String _proxy = '';
   static String _version = '';
   static String _udid = '';
-  static bool _testnet = true;
+  static int _testnetFlag = 0; // 0:正式网; 1:测网testnet; 2:回归测试网(regtest)
 
   static Future<void> init() async {
     spInit(await SharedPreferences.getInstance());
@@ -35,7 +35,7 @@ class CommData {
     _customServerURL = _sp.getString(_spKeyCustomServerURL) ?? '';
     _proxy = _sp.getString(_spKeyProxy) ?? '';
     _devMode = _sp.getBool(_spKeyDevMode) ?? false;
-    _testnet = _sp.getBool(_spKeyTestNet) ?? false;
+    _testnetFlag = _sp.getInt(_spKeyTestNet) ?? 0;
   }
 
   static SharedPreferences get sp {
@@ -62,14 +62,14 @@ class CommData {
     _sp.setBool(_spKeyDevMode, v);
   }
 
-  static bool get testnet {
-    return _testnet;
+  static int get testnetFlag {
+    return _testnetFlag;
   }
 
-  static set testnet(bool v) {
-    _testnet = v;
+  static set testnetFlag(int v) {
+    _testnetFlag = v;
 
-    _sp.setBool(_spKeyTestNet, v);
+    _sp.setInt(_spKeyTestNet, v);
   }
 
   static String get customServerURL {
@@ -129,10 +129,16 @@ class CommData {
       return _customServerURL;
     }
 
-    if (testnet) {
+    if (testnetFlag == 1) {
       return devMode
           ? dotenv.env['SERVER_DOMAIN_DEV_TESTNET']!
           : dotenv.env['SERVER_DOMAIN_TESTNET']!;
+    }
+
+    if (testnetFlag == 2) {
+      return devMode
+          ? dotenv.env['SERVER_DOMAIN_DEV_REGTEST']!
+          : dotenv.env['SERVER_DOMAIN_REGTEST']!;
     }
 
     return devMode
